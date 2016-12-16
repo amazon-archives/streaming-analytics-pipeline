@@ -19,7 +19,7 @@ format:
 # Iff RecordFormatType is 'CSV,' enter list items using the following format: '{Name: columnName, SqlType: dataType}'
 # Iff RecordFormatType is 'JSON,' enter list items using the following format: '{Name: columnName, SqlType: dataType, Mapping: $.rowPath}'
 # (Substitute '$.' with the RecordRowPath specified above)
-# See example below
+# See example below 
 columns:
     - {Name: car, SqlType: VARCHAR(8), Mapping: $.car}
     - {Name: carid, SqlType: VARCHAR(20), Mapping: $.carid}
