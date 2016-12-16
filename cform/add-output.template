@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "(SO0014) - Streaming Analytics Pipeline: this template adds an additional external destination to an existing Amazon Kinesis Analytics application.",
+    "Description": "(SO0014)- Streaming Analytics Pipeline: this template adds an additional external destination to an existing Amazon Kinesis Analytics application.",
     "Metadata": {
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [

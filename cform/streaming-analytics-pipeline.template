@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "(SO0014) - Streaming Analytics Pipeline: this template creates an Amazon Kinesis Analytics application that can be used to analyze data from a new or existing Amazon Kinesis stream, and deliver the results to an external destination.",
+    "Description": "(SO0014)- Streaming Analytics Pipeline: this template creates an Amazon Kinesis Analytics application that can be used to analyze data from a new or existing Amazon Kinesis stream, and deliver the results to an external destination.",
     "Metadata": {
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
