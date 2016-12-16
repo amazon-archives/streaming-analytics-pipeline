@@ -6,13 +6,13 @@ To help customers easily configure a streaming data architecture, AWS offers the
 For the full solution overview visit [Streaming Analytics Pipeline](https://aws.amazon.com/answers/big-data/streaming-analytics-pipeline).
 
 ## Cloudformation templates
-cform/streaming-analytics-pipeline.template
-cform/add-output.template
-cform/streaming-analytics-pipeline-config.yaml
+ - cform/streaming-analytics-pipeline.template
+ - cform/add-output.template
+ - cform/streaming-analytics-pipeline-config.yaml
 
 ## Solution code
-code/streaming-analytics-code.zip
-code/add-output-code.zip
+ - code/streaming-analytics-code.zip
+ - code/add-output-code.zip
 
 ***
 
