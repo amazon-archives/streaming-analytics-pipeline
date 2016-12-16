@@ -1,0 +1,2531 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "(SO0014) - Streaming Analytics Pipeline: this template creates an Amazon Kinesis Analytics application that can be used to analyze data from a new or existing Amazon Kinesis stream, and deliver the results to an external destination.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Amazon Kinesis Analytics Configuration"
+                    },
+                    "Parameters": [
+                        "NewOrExistingStream",
+                        "SourceStreamSize",
+                        "ExistingStreamName",
+                        "ExternalDestination",
+                        "ConfigFileLocation",
+                        "EncryptData",
+                        "PersistRawDataParam"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Amazon Redshift Destination Configuration"
+                    },
+                    "Parameters": [
+                        "MasterUser",
+                        "MasterUserPassword",
+                        "RedshiftJDBCURL",
+                        "RedshiftTableName",
+                        "RedshiftColumns",
+                        "RedshiftBufferInterval",
+                        "RedshiftBufferSize"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Amazon Elasticsearch Destination Configuration"
+                    },
+                    "Parameters": [
+                        "ESDomain",
+                        "ESIndex",
+                        "ESType",
+                        "ESIndexRotation",
+                        "ESBufferInterval",
+                        "ESBufferSize"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Amazon S3 Destination Configuration"
+                    },
+                    "Parameters": [
+                        "S3BufferInterval",
+                        "S3BufferSize",
+                        "S3DestinationPrefix"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Amazon Kinesis Stream Destination Configuration"
+                    },
+                    "Parameters": [
+                        "DestinationStream"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Anonymous Metrics Request"
+                    },
+                    "Parameters": [
+                        "CollectAnonymousData"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "SourceStreamSize": {
+                    "default": "New Stream Shard Count"
+                },
+                "NewOrExistingStream": {
+                    "default": "New or Existing Stream"
+                },
+                "ExistingStreamName": {
+                    "default": "Existing Stream Name"
+                },
+                "ExternalDestination": {
+                    "default": "External Destination"
+                },
+                "ConfigFileLocation": {
+                    "default": "Configuration File Location"
+                },
+                "EncryptData": {
+                    "default": "Encrypt Data at Rest?"
+                },
+                "PersistRawDataParam": {
+                    "default": "Persist Raw Source Data?"
+                },
+                "MasterUser": {
+                    "default": "Master User Name"
+                },
+                "MasterUserPassword": {
+                    "default": "Master User Password"
+                },
+                "RedshiftJDBCURL": {
+                    "default": "JDBC URL"
+                },
+                "RedshiftTableName": {
+                    "default": "Table Name"
+                },
+                "RedshiftColumns": {
+                    "default": "Column Pattern"
+                },
+                "RedshiftBufferInterval": {
+                    "default": "Buffer Interval"
+                },
+                "RedshiftBufferSize": {
+                    "default": "Buffer Size"
+                },
+                "ESDomain": {
+                    "default": "Domain Name"
+                },
+                "ESIndex": {
+                    "default": "Index Name"
+                },
+                "ESType": {
+                    "default": "Type Name"
+                },
+                "ESIndexRotation": {
+                    "default": "Index Rotation"
+                },
+                "ESBufferInterval": {
+                    "default": "Buffer Interval"
+                },
+                "ESBufferSize": {
+                    "default": "Buffer Size"
+                },
+                "S3BufferInterval": {
+                    "default": "Buffer Interval"
+                },
+                "S3BufferSize": {
+                    "default": "Buffer Size"
+                },
+                "S3DestinationPrefix": {
+                    "default": "Destination Prefix"
+                },
+                "DestinationStream": {
+                    "default": "Destination Stream Name"
+                },
+                "CollectAnonymousData": {
+                    "default": "Collect Anonymous Data"
+                }
+            }
+        }
+    },
+    "Parameters": {
+        "CollectAnonymousData": {
+            "Description": "Send anonymous data to AWS",
+            "Type": "String",
+            "Default": "Yes",
+            "AllowedValues": [
+                "Yes",
+                "No"
+            ]
+        },
+        "NewOrExistingStream": {
+            "Description": "Use a new or existing Amazon Kinesis Stream?",
+            "Type": "String",
+            "AllowedValues": [
+                "New Kinesis Stream",
+                "Existing Kinesis Stream"
+            ],
+            "Default": "New Kinesis Stream"
+        },
+        "ExistingStreamName": {
+            "Description": "If you selected 'Existing Kinesis Stream'",
+            "Type": "String"
+        },
+        "SourceStreamSize": {
+            "Description": "If you selected 'New Kinesis Stream'",
+            "Type": "String",
+            "AllowedPattern": "[0-9]*",
+            "Default": "2"
+        },
+        "S3DestinationPrefix": {
+            "Description": "Name of prefix where the aggregated data will be stored.",
+            "Type": "String",
+            "Default": "AggregatedData"
+        },
+        "ExternalDestination": {
+            "Description": "Select a destination for your aggregated data.",
+            "Type": "String",
+            "AllowedValues": [
+                "Amazon Redshift",
+                "Amazon ElasticSearch Service",
+                "Amazon S3",
+                "Amazon Kinesis Stream"
+            ],
+            "Default": "Amazon S3"
+        },
+        "ConfigFileLocation": {
+            "Description": "<bucket>/<key> Enter the S3 location of the yaml file.",
+            "Type": "String"
+        },
+        "S3BufferInterval": {
+            "Description": "Number of seconds to buffer data before delivering to S3 (60 to 900).",
+            "Type": "Number",
+            "Default": 300,
+            "MinValue": 60,
+            "MaxValue": 900
+        },
+        "S3BufferSize": {
+            "Description": "Number of MB of data to buffer before delivering to S3 (1 to 128).",
+            "Type": "Number",
+            "Default": 5,
+            "MinValue": 1,
+            "MaxValue": 128
+        },
+        "EncryptData": {
+            "Description": "Would you like to encrypt the data as it leaves your Kinesis Analytics application.",
+            "Type": "String",
+            "AllowedValues": [
+                "yes",
+                "no"
+            ],
+            "Default": "yes"
+        },
+        "ESDomain": {
+            "Description": "Name of the destination Amazon Elasticsearch Domain.",
+            "Type": "String"
+        },
+        "ESIndex": {
+            "Description": "Index name of the Amazon ElasticSearch Domain.",
+            "Type": "String"
+        },
+        "ESType": {
+            "Description": "Name of the Amazon ElasticSearch type.",
+            "Type": "String"
+        },
+        "ESIndexRotation": {
+            "Description": "Frequency at which the Amazon ElasticSearch index will be rotated.",
+            "Type": "String",
+            "AllowedValues": [
+                "NoRotation",
+                "OneHour",
+                "OneDay",
+                "OneWeek",
+                "OneMonth"
+            ],
+            "Default": "NoRotation"
+        },
+        "ESBufferInterval": {
+            "Description": "Number of seconds to buffer data before delivering to S3 to be copied to ElasticSearch (60 to 900).",
+            "Type": "Number",
+            "Default": 300,
+            "MinValue": 60,
+            "MaxValue": 900
+        },
+        "ESBufferSize": {
+            "Description": "Number of MB of data to buffer before delivering to S3 to be copied to ElasticSearch (1 to 100).",
+            "Type": "Number",
+            "Default": 5,
+            "MinValue": 1,
+            "MaxValue": 100
+        },
+        "MasterUserPassword": {
+            "Description": "Master user password of your preexisting Redshift cluster",
+            "NoEcho": "true",
+            "Type": "String"
+        },
+        "MasterUser": {
+            "Description": "Name of the master user of the preexisting Redshift Cluster",
+            "Type": "String"
+        },
+        "RedshiftBufferInterval": {
+            "Description": "Number of seconds to buffer data before delivering to S3 (60 to 900).",
+            "Type": "Number",
+            "Default": 300,
+            "MinValue": 60,
+            "MaxValue": 900
+        },
+        "RedshiftBufferSize": {
+            "Description": "Number of MB of data to buffer before delivering to S3 (1 to 128).",
+            "Type": "Number",
+            "Default": 5,
+            "MinValue": 1,
+            "MaxValue": 128
+        },
+        "RedshiftJDBCURL": {
+            "Description": "URL to connect to the cluster database with the JDBC client",
+            "Type": "String"
+        },
+        "RedshiftTableName": {
+            "Description": "Name of table in preexisting Redshift Cluster",
+            "Type": "String"
+        },
+        "RedshiftColumns": {
+            "Description": "Comma-separated list of the columns in the destination Redshift table.",
+            "Type": "String"
+        },
+        "PersistRawDataParam": {
+            "Description": "Store raw incoming data in an S3 bucket?",
+            "Type": "String",
+            "AllowedValues": [
+                "yes",
+                "no"
+            ],
+            "Default": "yes"
+        },
+        "DestinationStream": {
+            "Description": "Name of the existing destination Kinesis Stream",
+            "Type": "String"
+        }
+    },
+    "Mappings": {},
+    "Conditions": {
+        "ConfigFileNotProvidedCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ConfigFileLocation"
+                },
+                ""
+            ]
+        },
+        "AnonymousDataCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "CollectAnonymousData"
+                },
+                "Yes"
+            ]
+        },
+        "SourceIsNewStream": {
+            "Fn::Equals": [
+                {
+                    "Ref": "NewOrExistingStream"
+                },
+                "New Kinesis Stream"
+            ]
+        },
+        "RawDataCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "PersistRawDataParam"
+                },
+                "yes"
+            ]
+        },
+        "EncryptData": {
+            "Fn::Equals": [
+                {
+                    "Ref": "EncryptData"
+                },
+                "yes"
+            ]
+        },
+        "NoEncryption": {
+            "Fn::Equals": [
+                {
+                    "Ref": "EncryptData"
+                },
+                "no"
+            ]
+        },
+        "RedshiftDestination": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExternalDestination"
+                },
+                "Amazon Redshift"
+            ]
+        },
+        "ElasticsearchDestination": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExternalDestination"
+                },
+                "Amazon ElasticSearch Service"
+            ]
+        },
+        "S3Destination": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExternalDestination"
+                },
+                "Amazon S3"
+            ]
+        },
+        "StreamDestination": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExternalDestination"
+                },
+                "Amazon Kinesis Stream"
+            ]
+        }
+    },
+    "Resources": {
+        "EncryptionKey": {
+            "Type": "AWS::KMS::Key",
+            "Condition": "EncryptData",
+            "Properties": {
+                "Description": "KMS key generated to encrypt aggregated Kinesis Analytics data.",
+                "EnableKeyRotation": "true",
+                "KeyPolicy": {
+                    "Id": "KMS key policy",
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "Enable IAM User Permissions",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": [
+                                    {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:iam::",
+                                                {
+                                                    "Ref": "AWS::AccountId"
+                                                },
+                                                ":root"
+                                            ]
+                                        ]
+                                    }
+                                ]
+                            },
+                            "Action": "kms:*",
+                            "Resource": "*"
+                        },
+                        {
+                            "Sid": "Allow access for Key Administrators",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": []
+                            },
+                            "Action": [
+                                "kms:Create*",
+                                "kms:Describe*",
+                                "kms:Enable*",
+                                "kms:List*",
+                                "kms:Put*",
+                                "kms:Update*",
+                                "kms:Revoke*",
+                                "kms:Disable*",
+                                "kms:Get*",
+                                "kms:Delete*",
+                                "kms:ScheduleKeyDeletion",
+                                "kms:CancelKeyDeletion"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Sid": "Allow use of the key",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": []
+                            },
+                            "Action": [
+                                "kms:Encrypt",
+                                "kms:Decrypt",
+                                "kms:ReEncrypt*",
+                                "kms:GenerateDataKey*",
+                                "kms:DescribeKey"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Sid": "Allow attachment of persistent resources",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": []
+                            },
+                            "Action": [
+                                "kms:CreateGrant",
+                                "kms:ListGrants",
+                                "kms:RevokeGrant"
+                            ],
+                            "Resource": "*",
+                            "Condition": {
+                                "Bool": {
+                                    "kms:GrantIsForAWSResource": true
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "KMSAlias": {
+            "Type": "AWS::KMS::Alias",
+            "Condition": "EncryptData",
+            "Properties": {
+                "AliasName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "alias/key-",
+                            {
+                                "Ref": "AWS::StackName"
+                            }
+                        ]
+                    ]
+                },
+                "TargetKeyId": {
+                    "Fn::GetAtt": [
+                        "EncryptionKey",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "SourceStream": {
+            "Type": "AWS::Kinesis::Stream",
+            "Condition": "SourceIsNewStream",
+            "Properties": {
+                "ShardCount": {
+                    "Ref": "SourceStreamSize"
+                }
+            }
+        },
+        "StreamingAnalyticsBucket": {
+            "Type": "AWS::S3::Bucket"
+        },
+        "RawDatatoS3Role": {
+            "Type": "AWS::IAM::Role",
+            "Condition": "RawDataCondition",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "firehose.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Condition": {
+                                "StringEquals": {
+                                    "sts:ExternalId": {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "Raw-Data-to-S3-Delivery-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:AbortMultipartUpload",
+                                        "s3:GetBucketLocation",
+                                        "s3:GetObject",
+                                        "s3:ListBucket",
+                                        "s3:ListBucketMultipartUploads",
+                                        "s3:PutObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    {
+                                                        "Ref": "StreamingAnalyticsBucket"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    {
+                                                        "Ref": "StreamingAnalyticsBucket"
+                                                    },
+                                                    "/*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kms:Decrypt",
+                                        "kms:GenerateDataKey"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::If": [
+                                                "NoEncryption",
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:kms:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":key/placeholder-kms-id"
+                                                        ]
+                                                    ]
+                                                },
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "EncryptionKey",
+                                                        "Arn"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "kms:ViaService": {
+                                                "Fn::Join": [
+                                                    "",
+                                                    [
+                                                        "s3.",
+                                                        {
+                                                            "Ref": "AWS::Region"
+                                                        },
+                                                        ".amazonaws.com"
+                                                    ]
+                                                ]
+                                            }
+                                        },
+                                        "StringLike": {
+                                            "kms:EncryptionContext:aws:s3:arn": {
+                                                "Fn::Join": [
+                                                    "",
+                                                    [
+                                                        "arn:aws:s3:::",
+                                                        {
+                                                            "Ref": "StreamingAnalyticsBucket"
+                                                        },
+                                                        "/rawStreamData/*"
+                                                    ]
+                                                ]
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "Sid": "",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "RawDatatoS3": {
+            "Type": "AWS::KinesisFirehose::DeliveryStream",
+            "Condition": "RawDataCondition",
+            "Properties": {
+                "S3DestinationConfiguration": {
+                    "BucketARN": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:aws:s3:::",
+                                {
+                                    "Ref": "StreamingAnalyticsBucket"
+                                }
+                            ]
+                        ]
+                    },
+                    "BufferingHints": {
+                        "IntervalInSeconds": 300,
+                        "SizeInMBs": 10
+                    },
+                    "CompressionFormat": "UNCOMPRESSED",
+                    "EncryptionConfiguration": {
+                        "KMSEncryptionConfig": {
+                            "Fn::If": [
+                                "NoEncryption",
+                                {
+                                    "Ref": "AWS::NoValue"
+                                },
+                                {
+                                    "AWSKMSKeyARN": {
+                                        "Fn::GetAtt": [
+                                            "EncryptionKey",
+                                            "Arn"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        "NoEncryptionConfig": {
+                            "Fn::If": [
+                                "NoEncryption",
+                                "NoEncryption",
+                                {
+                                    "Ref": "AWS::NoValue"
+                                }
+                            ]
+                        }
+                    },
+                    "Prefix": "rawStreamData/",
+                    "RoleARN": {
+                        "Fn::GetAtt": [
+                            "RawDatatoS3Role",
+                            "Arn"
+                        ]
+                    }
+                }
+            }
+        },
+        "PersistRawDataLambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Condition": "RawDataCondition",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "Lambda-PersistRawData-Role-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kinesis:DescribeStream",
+                                        "kinesis:GetShardIterator",
+                                        "kinesis:GetRecords"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::If": [
+                                                "SourceIsNewStream",
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "SourceStream",
+                                                        "Arn"
+                                                    ]
+                                                },
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:kinesis:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":stream/",
+                                                            {
+                                                                "Ref": "ExistingStreamName"
+                                                            }
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "firehose:PutRecordBatch"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:firehose:",
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    },
+                                                    ":",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":deliverystream/",
+                                                    {
+                                                        "Ref": "RawDatatoS3"
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "PersistRawDataFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Condition": "RawDataCondition",
+            "Properties": {
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "from __future__ import print_function",
+                                "import boto3",
+                                "import base64",
+                                "",
+                                "fh = boto3.client('firehose')",
+                                "",
+                                "def lambda_handler(event, context):",
+                                "    rawDataChunks=[event['Records'][x:x+500] for x in xrange(0, len(event['Records']), 500)]",
+                                "    for chunk in rawDataChunks:",
+                                "        count = 0",
+                                "        batch=[]",
+                                "        for record in chunk:",
+                                "            batchDict={}",
+                                "            payload = base64.b64decode(record['kinesis']['data'])+'\\n'",
+                                "            batchDict['Data']=payload",
+                                "            batch.append(batchDict)",
+                                "            count+=1",
+                                "        try:",
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "            fh.put_record_batch(DeliveryStreamName='",
+                                            {
+                                                "Ref": "RawDatatoS3"
+                                            },
+                                            "',Records=batch)"
+                                        ]
+                                    ]
+                                },
+                                "            print('Put '+str(count)+' records to Amazon Kinesis Firehose Delivery Stream')",
+                                "        except Exception as e:",
+                                "            print(e)"
+                            ]
+                        ]
+                    }
+                },
+                "Description": "This function GETs and decodes raw data records from the source Kinesis stream, and batch PUTs them to a Firehose Delivery Stream",
+                "Handler": "index.lambda_handler",
+                "MemorySize": "128",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "PersistRawDataLambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python2.7",
+                "Timeout": "30"
+            }
+        },
+        "PersistRawDataTrigger": {
+            "Type": "AWS::Lambda::EventSourceMapping",
+            "Condition": "RawDataCondition",
+            "Properties": {
+                "BatchSize": 1000,
+                "Enabled": "True",
+                "EventSourceArn": {
+                    "Fn::If": [
+                        "SourceIsNewStream",
+                        {
+                            "Fn::GetAtt": [
+                                "SourceStream",
+                                "Arn"
+                            ]
+                        },
+                        {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:kinesis:",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    },
+                                    ":stream/",
+                                    {
+                                        "Ref": "ExistingStreamName"
+                                    }
+                                ]
+                            ]
+                        }
+                    ]
+                },
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "PersistRawDataFunction",
+                        "Arn"
+                    ]
+                },
+                "StartingPosition": "LATEST"
+            }
+        },
+        "FIrehoseToS3Role": {
+            "Type": "AWS::IAM::Role",
+            "Condition": "S3Destination",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "firehose.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Condition": {
+                                "StringEquals": {
+                                    "sts:ExternalId": {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "Firehose-to-S3-Delivery-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:AbortMultipartUpload",
+                                        "s3:GetBucketLocation",
+                                        "s3:GetObject",
+                                        "s3:ListBucket",
+                                        "s3:ListBucketMultipartUploads",
+                                        "s3:PutObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    {
+                                                        "Ref": "StreamingAnalyticsBucket"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    {
+                                                        "Ref": "StreamingAnalyticsBucket"
+                                                    },
+                                                    "/*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kms:Decrypt",
+                                        "kms:GenerateDataKey"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::If": [
+                                                "NoEncryption",
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:kms:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":key/placeholder-kms-id"
+                                                        ]
+                                                    ]
+                                                },
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "EncryptionKey",
+                                                        "Arn"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "kms:ViaService": {
+                                                "Fn::Join": [
+                                                    "",
+                                                    [
+                                                        "s3.",
+                                                        {
+                                                            "Ref": "AWS::Region"
+                                                        },
+                                                        ".amazonaws.com"
+                                                    ]
+                                                ]
+                                            }
+                                        },
+                                        "StringLike": {
+                                            "kms:EncryptionContext:aws:s3:arn": {
+                                                "Fn::Join": [
+                                                    "",
+                                                    [
+                                                        "arn:aws:s3:::",
+                                                        {
+                                                            "Ref": "StreamingAnalyticsBucket"
+                                                        },
+                                                        "/",
+                                                        {
+                                                            "Ref": "S3DestinationPrefix"
+                                                        },
+                                                        "/*"
+                                                    ]
+                                                ]
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "Sid": "",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "FIrehoseToS3": {
+            "Type": "AWS::KinesisFirehose::DeliveryStream",
+            "Condition": "S3Destination",
+            "Properties": {
+                "S3DestinationConfiguration": {
+                    "BucketARN": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:aws:s3:::",
+                                {
+                                    "Ref": "StreamingAnalyticsBucket"
+                                }
+                            ]
+                        ]
+                    },
+                    "BufferingHints": {
+                        "IntervalInSeconds": {
+                            "Ref": "S3BufferInterval"
+                        },
+                        "SizeInMBs": {
+                            "Ref": "S3BufferSize"
+                        }
+                    },
+                    "CompressionFormat": "UNCOMPRESSED",
+                    "EncryptionConfiguration": {
+                        "KMSEncryptionConfig": {
+                            "Fn::If": [
+                                "NoEncryption",
+                                {
+                                    "Ref": "AWS::NoValue"
+                                },
+                                {
+                                    "AWSKMSKeyARN": {
+                                        "Fn::GetAtt": [
+                                            "EncryptionKey",
+                                            "Arn"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        "NoEncryptionConfig": {
+                            "Fn::If": [
+                                "NoEncryption",
+                                "NoEncryption",
+                                {
+                                    "Ref": "AWS::NoValue"
+                                }
+                            ]
+                        }
+                    },
+                    "Prefix": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                {
+                                    "Ref": "S3DestinationPrefix"
+                                },
+                                "/"
+                            ]
+                        ]
+                    },
+                    "RoleARN": {
+                        "Fn::GetAtt": [
+                            "FIrehoseToS3Role",
+                            "Arn"
+                        ]
+                    }
+                }
+            }
+        },
+        "ElasticSearchDeliveryRole": {
+            "Type": "AWS::IAM::Role",
+            "Condition": "ElasticsearchDestination",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "firehose.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Condition": {
+                                "StringEquals": {
+                                    "sts:ExternalId": {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "Firehose-to-ElasticSearch-Delivery-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:AbortMultipartUpload",
+                                        "s3:GetBucketLocation",
+                                        "s3:GetObject",
+                                        "s3:ListBucket",
+                                        "s3:ListBucketMultipartUploads",
+                                        "s3:PutObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    {
+                                                        "Ref": "StreamingAnalyticsBucket"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    {
+                                                        "Ref": "StreamingAnalyticsBucket"
+                                                    },
+                                                    "/*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kms:Decrypt",
+                                        "kms:GenerateDataKey"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::If": [
+                                                "NoEncryption",
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:kms:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":key/placeholder-kms-id"
+                                                        ]
+                                                    ]
+                                                },
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "EncryptionKey",
+                                                        "Arn"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "kms:ViaService": {
+                                                "Fn::Join": [
+                                                    "",
+                                                    [
+                                                        "s3.",
+                                                        {
+                                                            "Ref": "AWS::Region"
+                                                        },
+                                                        ".amazonaws.com"
+                                                    ]
+                                                ]
+                                            }
+                                        },
+                                        "StringLike": {
+                                            "kms:EncryptionContext:aws:s3:arn": {
+                                                "Fn::Join": [
+                                                    "",
+                                                    [
+                                                        "arn:aws:s3:::",
+                                                        {
+                                                            "Ref": "StreamingAnalyticsBucket"
+                                                        },
+                                                        "/ESDeliveryBackup/*"
+                                                    ]
+                                                ]
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "Sid": "",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "es:DescribeElasticsearchDomain",
+                                        "es:DescribeElasticsearchDomains",
+                                        "es:DescribeElasticsearchDomainConfig",
+                                        "es:ESHttpPost",
+                                        "es:ESHttpPut"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:es:",
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    },
+                                                    ":",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":domain/",
+                                                    {
+                                                        "Ref": "ESDomain"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:es:",
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    },
+                                                    ":",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":domain/",
+                                                    {
+                                                        "Ref": "ESDomain"
+                                                    },
+                                                    "/*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Sid": "",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "FIrehoseToElasticsearch": {
+            "Type": "AWS::KinesisFirehose::DeliveryStream",
+            "Condition": "ElasticsearchDestination",
+            "Properties": {
+                "ElasticsearchDestinationConfiguration": {
+                    "BufferingHints": {
+                        "IntervalInSeconds": {
+                            "Ref": "ESBufferInterval"
+                        },
+                        "SizeInMBs": {
+                            "Ref": "ESBufferSize"
+                        }
+                    },
+                    "DomainARN": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:aws:es:",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                ":",
+                                {
+                                    "Ref": "AWS::AccountId"
+                                },
+                                ":domain/",
+                                {
+                                    "Ref": "ESDomain"
+                                }
+                            ]
+                        ]
+                    },
+                    "IndexName": {
+                        "Ref": "ESIndex"
+                    },
+                    "IndexRotationPeriod": {
+                        "Ref": "ESIndexRotation"
+                    },
+                    "RetryOptions": {
+                        "DurationInSeconds": 300
+                    },
+                    "RoleARN": {
+                        "Fn::GetAtt": [
+                            "ElasticSearchDeliveryRole",
+                            "Arn"
+                        ]
+                    },
+                    "S3BackupMode": "AllDocuments",
+                    "S3Configuration": {
+                        "BucketARN": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:s3:::",
+                                    {
+                                        "Ref": "StreamingAnalyticsBucket"
+                                    }
+                                ]
+                            ]
+                        },
+                        "BufferingHints": {
+                            "IntervalInSeconds": {
+                                "Ref": "ESBufferInterval"
+                            },
+                            "SizeInMBs": {
+                                "Ref": "ESBufferSize"
+                            }
+                        },
+                        "CompressionFormat": "UNCOMPRESSED",
+                        "EncryptionConfiguration": {
+                            "KMSEncryptionConfig": {
+                                "Fn::If": [
+                                    "NoEncryption",
+                                    {
+                                        "Ref": "AWS::NoValue"
+                                    },
+                                    {
+                                        "AWSKMSKeyARN": {
+                                            "Fn::GetAtt": [
+                                                "EncryptionKey",
+                                                "Arn"
+                                            ]
+                                        }
+                                    }
+                                ]
+                            },
+                            "NoEncryptionConfig": {
+                                "Fn::If": [
+                                    "NoEncryption",
+                                    "NoEncryption",
+                                    {
+                                        "Ref": "AWS::NoValue"
+                                    }
+                                ]
+                            }
+                        },
+                        "Prefix": "ESDeliveryBackup/",
+                        "RoleARN": {
+                            "Fn::GetAtt": [
+                                "ElasticSearchDeliveryRole",
+                                "Arn"
+                            ]
+                        }
+                    },
+                    "TypeName": {
+                        "Ref": "ESType"
+                    }
+                }
+            }
+        },
+        "RedshiftDeliveryRole": {
+            "Type": "AWS::IAM::Role",
+            "Condition": "RedshiftDestination",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "firehose.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Condition": {
+                                "StringEquals": {
+                                    "sts:ExternalId": {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "Firehose-to-Redshift-Delivery-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:AbortMultipartUpload",
+                                        "s3:GetBucketLocation",
+                                        "s3:GetObject",
+                                        "s3:ListBucket",
+                                        "s3:ListBucketMultipartUploads",
+                                        "s3:PutObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    {
+                                                        "Ref": "StreamingAnalyticsBucket"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    {
+                                                        "Ref": "StreamingAnalyticsBucket"
+                                                    },
+                                                    "/*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kms:Decrypt",
+                                        "kms:GenerateDataKey"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::If": [
+                                                "NoEncryption",
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:kms:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":key/placeholder-kms-id"
+                                                        ]
+                                                    ]
+                                                },
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "EncryptionKey",
+                                                        "Arn"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "kms:ViaService": {
+                                                "Fn::Join": [
+                                                    "",
+                                                    [
+                                                        "s3.",
+                                                        {
+                                                            "Ref": "AWS::Region"
+                                                        },
+                                                        ".amazonaws.com"
+                                                    ]
+                                                ]
+                                            }
+                                        },
+                                        "StringLike": {
+                                            "kms:EncryptionContext:aws:s3:arn": {
+                                                "Fn::Join": [
+                                                    "",
+                                                    [
+                                                        "arn:aws:s3:::",
+                                                        {
+                                                            "Ref": "StreamingAnalyticsBucket"
+                                                        },
+                                                        "/FirehoseDelivery/*"
+                                                    ]
+                                                ]
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "Sid": "",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "FIrehoseToRedshift": {
+            "Type": "AWS::KinesisFirehose::DeliveryStream",
+            "Condition": "RedshiftDestination",
+            "Properties": {
+                "RedshiftDestinationConfiguration": {
+                    "ClusterJDBCURL": {
+                        "Ref": "RedshiftJDBCURL"
+                    },
+                    "CopyCommand": {
+                        "CopyOptions": "delimiter ','",
+                        "DataTableColumns": {
+                            "Ref": "RedshiftColumns"
+                        },
+                        "DataTableName": {
+                            "Ref": "RedshiftTableName"
+                        }
+                    },
+                    "Password": {
+                        "Ref": "MasterUserPassword"
+                    },
+                    "RoleARN": {
+                        "Fn::GetAtt": [
+                            "RedshiftDeliveryRole",
+                            "Arn"
+                        ]
+                    },
+                    "S3Configuration": {
+                        "BucketARN": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:s3:::",
+                                    {
+                                        "Ref": "StreamingAnalyticsBucket"
+                                    }
+                                ]
+                            ]
+                        },
+                        "RoleARN": {
+                            "Fn::GetAtt": [
+                                "RedshiftDeliveryRole",
+                                "Arn"
+                            ]
+                        },
+                        "BufferingHints": {
+                            "IntervalInSeconds": {
+                                "Ref": "RedshiftBufferInterval"
+                            },
+                            "SizeInMBs": {
+                                "Ref": "RedshiftBufferSize"
+                            }
+                        },
+                        "CompressionFormat": "UNCOMPRESSED",
+                        "EncryptionConfiguration": {
+                            "KMSEncryptionConfig": {
+                                "Fn::If": [
+                                    "NoEncryption",
+                                    {
+                                        "Ref": "AWS::NoValue"
+                                    },
+                                    {
+                                        "AWSKMSKeyARN": {
+                                            "Fn::GetAtt": [
+                                                "EncryptionKey",
+                                                "Arn"
+                                            ]
+                                        }
+                                    }
+                                ]
+                            },
+                            "NoEncryptionConfig": {
+                                "Fn::If": [
+                                    "NoEncryption",
+                                    "NoEncryption",
+                                    {
+                                        "Ref": "AWS::NoValue"
+                                    }
+                                ]
+                            }
+                        },
+                        "Prefix": "FirehoseDelivery/"
+                    },
+                    "Username": {
+                        "Ref": "MasterUser"
+                    }
+                }
+            }
+        },
+        "LambdaRoleCreateKAApp": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": {
+                                    "Ref": "AWS::AccountId"
+                                }
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "Lambda-Execution-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kinesisanalytics:CreateApplication",
+                                        "kinesisanalytics:DeleteApplication",
+                                        "kinesisanalytics:DescribeApplication"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:kinesisanalytics:",
+                                                {
+                                                    "Ref": "AWS::Region"
+                                                },
+                                                ":",
+                                                {
+                                                    "Ref": "AWS::AccountId"
+                                                },
+                                                ":application/*"
+                                            ]
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kinesisanalytics:ListApplications"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudwatch:GetMetricStatistics"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:s3:::",
+                                                {
+                                                    "Ref": "ConfigFileLocation"
+                                                }
+                                            ]
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:PassRole"
+                                    ],
+                                    "Resource": {
+                                        "Fn::GetAtt": [
+                                            "KinesisAnalyticsRole",
+                                            "Arn"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudformation:DescribeStacks"
+                                    ],
+                                    "Resource": {
+                                        "Ref": "AWS::StackId"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "KinesisAnalyticsRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "kinesisanalytics.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "KinesisAnalyticsRole-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "ReadInputKinesis",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kinesis:DescribeStream",
+                                        "kinesis:GetShardIterator",
+                                        "kinesis:GetRecords"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::If": [
+                                                "SourceIsNewStream",
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "SourceStream",
+                                                        "Arn"
+                                                    ]
+                                                },
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:kinesis:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":stream/",
+                                                            {
+                                                                "Ref": "ExistingStreamName"
+                                                            }
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Sid": "WriteOutputFirehose",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "firehose:DescribeDeliveryStream",
+                                        "firehose:PutRecord",
+                                        "firehose:PutRecordBatch"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::If": [
+                                                "RedshiftDestination",
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:firehose:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":deliverystream/",
+                                                            {
+                                                                "Ref": "FIrehoseToRedshift"
+                                                            }
+                                                        ]
+                                                    ]
+                                                },
+                                                {
+                                                    "Ref": "AWS::NoValue"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "Fn::If": [
+                                                "S3Destination",
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:firehose:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":deliverystream/",
+                                                            {
+                                                                "Ref": "FIrehoseToS3"
+                                                            }
+                                                        ]
+                                                    ]
+                                                },
+                                                {
+                                                    "Ref": "AWS::NoValue"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "Fn::If": [
+                                                "ElasticsearchDestination",
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:firehose:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":deliverystream/",
+                                                            {
+                                                                "Ref": "FIrehoseToElasticsearch"
+                                                            }
+                                                        ]
+                                                    ]
+                                                },
+                                                {
+                                                    "Ref": "AWS::NoValue"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "Fn::If": [
+                                                "StreamDestination",
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:kinesis:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":stream/kinesis-analytics-placeholder-stream-destination"
+                                                        ]
+                                                    ]
+                                                },
+                                                {
+                                                    "Ref": "AWS::NoValue"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Sid": "WriteOutputKinesis",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kinesis:DescribeStream",
+                                        "kinesis:PutRecord",
+                                        "kinesis:PutRecords"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::If": [
+                                                "StreamDestination",
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:kinesis:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":stream/",
+                                                            {
+                                                                "Ref": "DestinationStream"
+                                                            }
+                                                        ]
+                                                    ]
+                                                },
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:aws:kinesis:",
+                                                            {
+                                                                "Ref": "AWS::Region"
+                                                            },
+                                                            ":",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":stream/kinesis-analytics-placeholder-stream-destination"
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "KALambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "DependsOn": [
+                "LambdaRoleCreateKAApp"
+            ],
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {"Fn::Join": ["", [
+                        "solutions-",
+                        {"Ref": "AWS::Region"}
+                    ]]},
+                    "S3Key": "streaming-analytics/v1/streaming-analytics-code.zip"
+                },
+                "Description": "This function configures and lunches a Kinesis Analytics Application",
+                "Handler": "lambda_function.lambda_handler",
+                "MemorySize": "128",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaRoleCreateKAApp",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python2.7",
+                "Timeout": "30"
+            }
+        },
+        "CreateKAApplication": {
+            "Type": "Custom::KinesisAnalyticsApp",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "KALambdaFunction",
+                        "Arn"
+                    ]
+                },
+                "FunctionName": {"Ref": "KALambdaFunction"},
+                "Region": {"Ref": "AWS::Region"},
+                "ConfigFile": {
+                    "Fn::If": [
+                        "ConfigFileNotProvidedCondition",
+                        {
+                            "Ref": "AWS::NoValue"
+                        },
+                        {
+                            "Ref": "ConfigFileLocation"
+                        }
+                    ]
+                },
+                "KAAppName": "KinesisAnalyticsApp-",
+                "SourceStream": {
+                    "Fn::If": [
+                        "SourceIsNewStream",
+                        {
+                            "Fn::GetAtt": [
+                                "SourceStream",
+                                "Arn"
+                            ]
+                        },
+                        {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:kinesis:",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    },
+                                    ":stream/",
+                                    {
+                                        "Ref": "ExistingStreamName"
+                                    }
+                                ]
+                            ]
+                        }
+                    ]
+                },
+                "KARole": {
+                    "Fn::GetAtt": [
+                        "KinesisAnalyticsRole",
+                        "Arn"
+                    ]
+                },
+                "Destination": {
+                    "Ref": "ExternalDestination"
+                },
+                "RedshiftDest": {
+                    "Fn::If": [
+                        "RedshiftDestination",
+                        {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:firehose:",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    },
+                                    ":deliverystream/",
+                                    {
+                                        "Ref": "FIrehoseToRedshift"
+                                    }
+                                ]
+                            ]
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                },
+                "S3Dest": {
+                    "Fn::If": [
+                        "S3Destination",
+                        {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:firehose:",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    },
+                                    ":deliverystream/",
+                                    {
+                                        "Ref": "FIrehoseToS3"
+                                    }
+                                ]
+                            ]
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                },
+                "ElasticsearchDest": {
+                    "Fn::If": [
+                        "ElasticsearchDestination",
+                        {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:firehose:",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    },
+                                    ":deliverystream/",
+                                    {
+                                        "Ref": "FIrehoseToElasticsearch"
+                                    }
+                                ]
+                            ]
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                },
+                "StreamDest": {
+                    "Fn::If": [
+                        "StreamDestination",
+                        {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:kinesis:",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    },
+                                    ":stream/",
+                                    {
+                                        "Ref": "DestinationStream"
+                                    }
+                                ]
+                            ]
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                },
+                "PersistRawData": {
+                    "Ref": "PersistRawDataParam"
+                },
+                "AnonymousData": {
+                    "Ref": "CollectAnonymousData"
+                }
+            }
+        },
+        "SendAnonymousDataCloudWatchRole": {
+            "Type": "AWS::IAM::Role",
+            "Condition": "AnonymousDataCondition",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "events.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "SendAnonymousData-CloudWatchEvent-Role-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "lambda:InvokeFunction"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "KALambdaFunction",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Sid": "",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "SendAnonymousMetricsTrigger": {
+            "Type": "AWS::Events::Rule",
+            "Condition": "AnonymousDataCondition",
+            "Properties": {
+                "Description": "Invokes the KALambdaFunction every 15 minutes to collect and send anonymous metrics on solution usage to AWS.",
+                "Name": {
+                    "Fn::Join": [
+                        "",[
+                            {"Fn::GetAtt": ["CreateKAApplication","AppName"]},
+                            "-metrics"]]},
+                "ScheduleExpression": "rate(15 minutes)",
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "SendAnonymousDataCloudWatchRole",
+                        "Arn"
+                    ]
+                },
+                "State": "ENABLED",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "KALambdaFunction",
+                                "Arn"
+                            ]
+                        },
+                        "Id": {
+                            "Ref": "KALambdaFunction"
+                        },
+                        "Input": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "{\"RequestType\" :\"SendAnonymousMetrics\",\"AppName\":\"",
+                                    {
+                                        "Fn::GetAtt": [
+                                            "CreateKAApplication",
+                                            "AppName"
+                                        ]
+                                    },
+                                    "\",\"uuid\":\"",
+                                    {
+                                        "Fn::GetAtt": [
+                                            "CreateKAApplication",
+                                            "UUID"
+                                        ]
+                                    },
+                                    "\"}"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "SourceStream": {
+            "Description": "Stream your data to this Amazon Kinesis Stream",
+            "Value": {
+                "Fn::If": [
+                    "SourceIsNewStream",
+                    {
+                        "Ref": "SourceStream"
+                    },
+                    {
+                        "Ref": "ExistingStreamName"
+                    }
+                ]
+            }
+        },
+        "Application": {
+            "Description": "Validate and start this Amazon Kinesis Analytics Application",
+            "Value": {
+                "Fn::GetAtt": [
+                    "CreateKAApplication",
+                    "AppName"
+                ]
+            }
+        },
+        "SolutionBucket": {
+            "Description": "Data will be stored in this Amazon S3 bucket",
+            "Value": {
+                "Ref": "StreamingAnalyticsBucket"
+            }
+        },
+        "KMSKey": {
+            "Description": "Data will be encrypted with this Amazon KMS encryption key",
+            "Value": {
+                "Ref": "KMSAlias"
+            },
+            "Condition": "EncryptData"
+        },
+        "UUID": {
+            "Description": "UUID of the soln",
+            "Value": {
+                "Fn::GetAtt": [
+                    "CreateKAApplication",
+                    "UUID"
+                ]
+            }
+        }
+    }
+}

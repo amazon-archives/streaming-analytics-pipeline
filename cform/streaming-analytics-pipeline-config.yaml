@@ -1,0 +1,41 @@
+# Update this file according to your Input Schema and Kinesis Analytics application code
+# Note: pay attention to indentation - it matters
+
+# REQUIRED
+format:
+    # Enter the input streaming data record format as it is entering your source Amazon Kinesis Stream, either 'JSON' or 'CSV'
+    InputFormatType: JSON
+        # Iff InputFormatType is 'CSV,' enter the column delimiter of the streaming data (i.e. ',' '|')
+    RecordColumnDelimiter: ","
+        # Iff InputFormatType is 'CSV,' enter the row delimiter of the streaming data (i.e. '\n')
+    RecordRowDelimiter: "\n"
+        # Iff InputFormatType is 'JSON,' enter a record row path which points to the specific key value pair of the data you'd like to extract
+    RecordRowPath: "$"
+    # Enter the output streaming data record format as it will be sent to your destination Amazon Kinesis Stream or Firehose Delivery Stream, either 'JSON' or 'CSV'
+    # If your external destination is Amazon Redshift, this value will automatically be set to CSV
+    # If your external destination is Amazon Elasticsearch, this value will automatically be set to JSON
+    OutputFormatType: JSON
+
+# Iff RecordFormatType is 'CSV,' enter list items using the following format: '{Name: columnName, SqlType: dataType}'
+# Iff RecordFormatType is 'JSON,' enter list items using the following format: '{Name: columnName, SqlType: dataType, Mapping: $.rowPath}'
+# (Substitute '$.' with the RecordRowPath specified above)
+# See example below
+columns:
+    - {Name: car, SqlType: VARCHAR(8), Mapping: $.car}
+    - {Name: carid, SqlType: VARCHAR(20), Mapping: $.carid}
+    - {Name: engine_temp, SqlType: REAL, Mapping: $.engine_temp}
+    - {Name: speed, SqlType: REAL, Mapping: $.speed}
+    - {Name: longitude, SqlType: DOUBLE, Mapping: $.long}
+    - {Name: latitude, SqlType: DOUBLE, Mapping: $.lat}
+
+
+# Indent, and paste your SQL code verbatim below the comment. Please refer to implementation guide for detailed instructions.
+# Name your destination stream 'DESTINATION_SQL_STREAM' and name your source stream 'SOURCE_SQL_STREAM_001'
+# See example below
+sql_code: |
+    -- Paste your SQL code here
+    CREATE OR REPLACE STREAM "DESTINATION_SQL_STREAM" (car VARCHAR(8), vehicle_count INTEGER, avg_temp REAL, low_temp REAL, high_temp REAL);
+    CREATE OR REPLACE PUMP "STREAM_PUMP" AS INSERT INTO "DESTINATION_SQL_STREAM"
+    SELECT STREAM "car", COUNT(*) as vehicle_count, AVG("engine_temp") as avg_temp, MIN("engine_temp") as low_temp, MAX("engine_temp") as high_temp
+    FROM "SOURCE_SQL_STREAM_001"
+    GROUP BY "car", FLOOR(("SOURCE_SQL_STREAM_001".ROWTIME - TIMESTAMP '1970-01-01 00:00:00') SECOND / 30 TO SECOND);
